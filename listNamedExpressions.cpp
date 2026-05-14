@@ -74,7 +74,12 @@ public:
         name = expressionName;
     }
 
-    string toString() const
+    string getName() const
+    {
+        return name;
+    }
+
+    string toString() const override
     {
         stringstream output;
 
@@ -87,7 +92,12 @@ public:
 
 bool isSupportedOperator(char op);
 bool isValidName(string name);
+bool readExpressionLine(string line, string &name, int &firstOperand, char &op,
+                        int &secondOperand, bool &hasExpressionName);
+int findNamedExpression(const vector<Expression *> &expressions, string name);
 void addExpression(vector<Expression *> &expressions);
+void updateExpression(vector<Expression *> &expressions);
+void deleteOneExpression(vector<Expression *> &expressions);
 void listAllExpressions(const vector<Expression *> &expressions);
 void listByOperator(const vector<Expression *> &expressions);
 void listSummary(const vector<Expression *> &expressions);
@@ -113,21 +123,14 @@ bool isValidName(string name)
     return validName;
 }
 
-void addExpression(vector<Expression *> &expressions)
+bool readExpressionLine(string line, string &name, int &firstOperand, char &op,
+                        int &secondOperand, bool &hasExpressionName)
 {
-    string line;
-    string name = "";
-    int firstOperand;
-    int secondOperand;
-    char op;
-    bool hasExpressionName = false;
     bool goodExpression = true;
-
-    cout << "Please enter an expression:" << endl;
-    cin.ignore(1000, '\n');
-    getline(cin, line);
-
     int equalsIndex = line.find('=');
+
+    name = "";
+    hasExpressionName = false;
 
     if (equalsIndex != string::npos)
     {
@@ -172,6 +175,40 @@ void addExpression(vector<Expression *> &expressions)
         }
     }
 
+    return goodExpression;
+}
+
+int findNamedExpression(const vector<Expression *> &expressions, string name)
+{
+    int foundIndex = -1;
+
+    for (int i = 0; i < expressions.size(); i++)
+    {
+        NamedExpression *namedExpression = dynamic_cast<NamedExpression *>(expressions[i]);
+
+        if (namedExpression != nullptr && namedExpression->getName() == name)
+            foundIndex = i;
+    }
+
+    return foundIndex;
+}
+
+void addExpression(vector<Expression *> &expressions)
+{
+    string line;
+    string name;
+    int firstOperand;
+    int secondOperand;
+    char op;
+    bool hasExpressionName;
+    bool goodExpression;
+
+    cout << "Please enter an expression:" << endl;
+    cin.ignore(1000, '\n');
+    getline(cin, line);
+
+    goodExpression = readExpressionLine(line, name, firstOperand, op, secondOperand, hasExpressionName);
+
     if (goodExpression)
     {
         Expression *newExpression;
@@ -181,8 +218,80 @@ void addExpression(vector<Expression *> &expressions)
         else
             newExpression = new Expression(firstOperand, op, secondOperand);
 
-        expressions.push_back(newExpression);
-        cout << newExpression->toString() << endl;
+        if (hasExpressionName && findNamedExpression(expressions, name) != -1)
+        {
+            int foundIndex = findNamedExpression(expressions, name);
+
+            delete expressions[foundIndex];
+            expressions[foundIndex] = newExpression;
+
+            cout << newExpression->toString() << endl;
+            cout << "The expression is updated successfully." << endl;
+        }
+        else
+        {
+            expressions.push_back(newExpression);
+            cout << newExpression->toString() << endl;
+        }
+    }
+}
+
+void updateExpression(vector<Expression *> &expressions)
+{
+    string line;
+    string name;
+    int firstOperand;
+    int secondOperand;
+    char op;
+    bool hasExpressionName;
+    bool goodExpression;
+
+    cout << "Please enter an expression:" << endl;
+    cin.ignore(1000, '\n');
+    getline(cin, line);
+
+    goodExpression = readExpressionLine(line, name, firstOperand, op, secondOperand, hasExpressionName);
+
+    if (goodExpression)
+    {
+        int foundIndex = findNamedExpression(expressions, name);
+
+        if (!hasExpressionName || foundIndex == -1)
+        {
+            cout << "The named expression is not found." << endl;
+        }
+        else
+        {
+            Expression *newExpression = new NamedExpression(name, firstOperand, op, secondOperand);
+
+            delete expressions[foundIndex];
+            expressions[foundIndex] = newExpression;
+
+            cout << newExpression->toString() << endl;
+            cout << "The expression is updated successfully." << endl;
+        }
+    }
+}
+
+void deleteOneExpression(vector<Expression *> &expressions)
+{
+    string name;
+    int foundIndex;
+
+    cout << "Please enter the name of the expression:" << endl;
+    cin >> name;
+
+    foundIndex = findNamedExpression(expressions, name);
+
+    if (foundIndex == -1)
+    {
+        cout << "The named expression is not found." << endl;
+    }
+    else
+    {
+        delete expressions[foundIndex];
+        expressions.erase(expressions.begin() + foundIndex);
+        cout << "The expression is deleted successfully." << endl;
     }
 }
 
@@ -299,7 +408,7 @@ int main()
 
     while (programRunning)
     {
-        cout << "Please enter a command (add, listall, listbyoperator, listsummary, and exit): ";
+        cout << "Please enter a command (add, listall, listbyoperator, listsummary, update, delete and exit): ";
         cin >> command;
 
         if (command == "exit")
@@ -323,6 +432,14 @@ int main()
         else if (command == "listsummary")
         {
             listSummary(expressions);
+        }
+        else if (command == "update")
+        {
+            updateExpression(expressions);
+        }
+        else if (command == "delete")
+        {
+            deleteOneExpression(expressions);
         }
         else
         {
